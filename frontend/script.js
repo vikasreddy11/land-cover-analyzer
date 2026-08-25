@@ -313,7 +313,7 @@ function runCompare() {
 
   container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const url = `http://127.0.0.1:5000/api/compare?lat=${selectedLat}&lon=${selectedLon}&radius=${radius}&year1=${year1}&year2=${year2}`;
+  const url = `https://landscope-backend.onrender.com/api/compare?lat=${selectedLat}&lon=${selectedLon}&radius=${radius}&year1=${year1}&year2=${year2}`;
 
   fetch(url)
     .then(r => r.json())
