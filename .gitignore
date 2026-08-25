@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Satellite imagery & GeoTIFF temporary files
+*.tif
+*.tiff
+satellite_*.tif
+automatic_*.tif
+
+# Environment & credentials
+.env
+.env.local
+*.json.secret
+service-account*.json
+key/
+
+# Logs
+*.log

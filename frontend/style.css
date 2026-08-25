@@ -1,0 +1,256 @@
+/* ================================================================
+   style.css
+   Only what Tailwind can't do:
+   - Ambient background gradient animation
+   - Glassmorphism panel helpers
+   - Leaflet dark-mode overrides
+   - Autocomplete dropdown animation
+   - Result card accent bars
+   - Progress bar animation
+   - Pulse / Spin keyframes
+   - Shake keyframe
+================================================================ */
+
+/* ─────────────────────────────────────────
+   GLOBAL FONT SMOOTH
+───────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─────────────────────────────────────────
+   AMBIENT BACKGROUND GLOW
+───────────────────────────────────────── */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 15% 20%,  rgba(16, 217, 126, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 10%,  rgba(59, 130, 246, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 85%,  rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  animation: ambient-shift 18s ease-in-out infinite alternate;
+}
+
+@keyframes ambient-shift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(1.5%, 1.5%) scale(1.02); }
+}
+
+/* ─────────────────────────────────────────
+   GLASS PANEL
+───────────────────────────────────────── */
+.glass-panel {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.3s;
+}
+.glass-panel:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* ─────────────────────────────────────────
+   STEP LABEL
+───────────────────────────────────────── */
+.step-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #475569;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-label::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 16px;
+  background: #10d97e;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────
+   GRADIENT TEXT
+───────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #10d97e 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─────────────────────────────────────────
+   COORDINATE BADGE — ACTIVE STATE
+───────────────────────────────────────── */
+.coord-badge.active {
+  border-color: rgba(16, 217, 126, 0.4) !important;
+  background: rgba(16, 217, 126, 0.06) !important;
+}
+
+/* ─────────────────────────────────────────
+   AUTOCOMPLETE DROPDOWN
+───────────────────────────────────────── */
+.autocomplete-dropdown {
+  animation: fade-down 0.18s ease both;
+}
+.autocomplete-dropdown.show {
+  display: block;
+}
+
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.autocomplete-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover      { background: rgba(255, 255, 255, 0.05); }
+
+.autocomplete-item .place-name   { color: #f1f5f9; flex: 1; }
+.autocomplete-item .place-region { color: #475569; font-size: 12px; }
+
+/* ─────────────────────────────────────────
+   MAP PULSE DOT
+───────────────────────────────────────── */
+.map-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 217, 126, 0.5); }
+  50%       { opacity: 0.7; box-shadow: 0 0 0 6px rgba(16, 217, 126, 0); }
+}
+
+/* ─────────────────────────────────────────
+   LEAFLET DARK OVERRIDES
+───────────────────────────────────────── */
+.leaflet-container { background: #0d1528 !important; }
+
+.leaflet-control-zoom a {
+  background: #111827 !important;
+  color: #94a3b8 !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+}
+.leaflet-control-attribution {
+  background: rgba(10,15,30,0.8) !important;
+  color: #475569 !important;
+}
+.leaflet-control-attribution a { color: #64748b !important; }
+
+/* ─────────────────────────────────────────
+   RESULTS PANEL VISIBILITY
+───────────────────────────────────────── */
+.results-panel.visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  pointer-events: all !important;
+}
+
+/* ─────────────────────────────────────────
+   RESULT CARDS — TOP ACCENT BARS
+───────────────────────────────────────── */
+.result-card {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.result-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.result-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.result-card.card-year1::before { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+.result-card.card-year2::before { background: linear-gradient(90deg, #10d97e, #09b868); }
+.result-card.card-change::before { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
+/* ─────────────────────────────────────────
+   PROGRESS BAR
+───────────────────────────────────────── */
+.bar-track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  width: 0%;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.bar-green  { background: linear-gradient(90deg, #10d97e, #09b868); }
+.bar-orange { background: linear-gradient(90deg, #f59e0b, #d97706); }
+
+/* ─────────────────────────────────────────
+   LOADING RING (inside result area)
+───────────────────────────────────────── */
+.loading-ring {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: #10d97e;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+/* ─────────────────────────────────────────
+   BUTTON SPINNER
+───────────────────────────────────────── */
+.btn-spinner {
+  animation: spin 0.8s linear infinite;
+}
+.btn-loading .btn-spinner { display: block !important; }
+.btn-loading #btnText     { opacity: 0; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─────────────────────────────────────────
+   SHAKE ANIMATION (missing location alert)
+───────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX( 8px); }
+  60%       { transform: translateX(-5px); }
+  80%       { transform: translateX( 5px); }
+}
+.shake { animation: shake 0.4s ease; }
+
+/* ─────────────────────────────────────────
+   METRIC DOT GLOWS
+───────────────────────────────────────── */
+.dot-green  { background: #10d97e; box-shadow: 0 0 6px rgba(16,217,126,0.6); }
+.dot-orange { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.6); }
