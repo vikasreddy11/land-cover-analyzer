@@ -4,7 +4,7 @@ from analysis import compare_location
 import os
 
 app = Flask(__name__)
-CORS(app, origins=["https://landcover.netlify.app/"])
+CORS(app, origins=["https://landcover.netlify.app"])
 
 @app.route("/api/compare")
 def compare():
