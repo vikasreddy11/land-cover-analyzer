@@ -26,12 +26,12 @@ def get_earth_engine_credentials():
     )
 
 
-credentials = get_earth_engine_credentials()
-ee.Initialize(credentials)
+def init_earth_engine():
+    credentials = get_earth_engine_credentials()
+    ee.Initialize(credentials)
 
 print("Earth Engine connected!")
 
-print("Earth Engine connected!")
 
 
 # ============================================================
