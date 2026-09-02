@@ -1,6 +1,14 @@
 # LandScope
 
-LandScope is a satellite-based land cover analysis tool that compares changes in vegetation and urbanization over time using satellite imagery indices (**NDVI** and **NDBI**). It retrieves multispectral Sentinel-2 imagery via Google Earth Engine to compute and compare surface changes between two specified years.
+LandScope is a satellite-based land cover analysis tool that lets you search any location on Earth, select two years, and instantly compare how vegetation and urbanization have changed between them. It combines Sentinel-2 satellite imagery with NDVI/NDBI spectral indices to quantify land cover shifts — useful for tracking deforestation, urban sprawl, or general environmental change over time, without needing manual GIS tools.
+
+🔗 **Live app:** [landcover.netlify.app](https://landcover.netlify.app/)
+
+## How it works
+
+1. **Select a location** — search by place name or click directly on the map
+2. **Configure parameters** — choose a radius (in meters) and two years to compare (Sentinel-2 data available from 2015 onward)
+3. **Run the analysis** — the backend fetches Sentinel-2 imagery for both years and computes vegetation and urbanization percentages using NDVI and NDBI indices
 
 ---
 
