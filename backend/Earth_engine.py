@@ -20,17 +20,24 @@ def get_earth_engine_credentials():
 
     # Case 2: local — read the key straight from the downloaded file
     key_path = os.environ.get("EE_KEY_PATH")
-    return ee.ServiceAccountCredentials(
-        email=None,
-        key_file=key_path
-    )
+    if key_path:
+        return ee.ServiceAccountCredentials(
+            email=None,
+            key_file=key_path
+        )
+    return None
 
 
 def init_earth_engine():
-    credentials = get_earth_engine_credentials()
-    ee.Initialize(credentials)
-
-print("Earth Engine connected!")
+    try:
+        credentials = get_earth_engine_credentials()
+        if credentials:
+            ee.Initialize(credentials)
+            print("Earth Engine initialized successfully!")
+        else:
+            print("EE_KEY_PATH / EE_SERVICE_ACCOUNT_KEY not set; skipping Earth Engine init.")
+    except Exception as e:
+        print(f"Earth Engine initialization warning: {e}")
 
 
 

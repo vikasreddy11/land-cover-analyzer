@@ -1,6 +1,7 @@
 from app import app  # import your Flask app object
 
-def test_compare(): 
+def test_compare(mocker): 
+    mocker.patch("app.compare_location", return_value={"year1": {"vegetation": 20, "urbanization": 30}, "year2": {"vegetation": 25, "urbanization": 35}, "change": {"vegetation": 5, "urbanization": 5}})
     client = app.test_client()  # this simulates requests without running a server
     response = client.get("/api/compare?lat=17.385&lon=78.486&radius=500&year1=2018&year2=2024")
     print(response.get_json())
@@ -31,7 +32,8 @@ def test_less_than_2015():
     
     assert response.status_code == 400
 
-def test_missing_radius():
+def test_missing_radius(mocker):
+    mocker.patch("app.compare_location", return_value={"year1": {"vegetation": 20, "urbanization": 30}, "year2": {"vegetation": 25, "urbanization": 35}, "change": {"vegetation": 5, "urbanization": 5}})
     client = app.test_client()
     response = client.get("/api/compare?lat=17.385&lon=78.486&year1=2018&year2=2024")
     # radius is missing on purpose
