@@ -8,13 +8,22 @@ import rasterio
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-DEFAULT_WEIGHTS = os.path.join(os.path.dirname(__file__), "trained_unet_v4.pth")
+DEFAULT_WEIGHTS = os.path.join(os.path.dirname(__file__), "trained_unet_lv2.pth")
+FALLBACK_WEIGHTS = os.path.join(os.path.dirname(__file__), "trained_unet_v4.pth")
 
 def load_model(weights_path=DEFAULT_WEIGHTS):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    sd = torch.load(weights_path, map_location=device)
+    out_channels = sd["decoder.final.weight"].shape[0]
+    
     model = UNet().to(device)
-    model.load_state_dict(torch.load(weights_path, map_location=device))
+    if out_channels != 5:
+        import torch.nn as nn
+        model.decoder.final = nn.Conv2d(16, out_channels, kernel_size=1).to(device)
+        
+    model.load_state_dict(sd)
     model.eval()
+    print(f"Loaded model weights from: {os.path.basename(weights_path)} ({out_channels} classes)")
     return model, device
 
 
@@ -27,31 +36,37 @@ def visualize(img, predicted_mask):
     axes[1].set_title("Predicted Mask")
     plt.show()
 
-def get_land_cover_percentages(predicted_mask, num_classes=5):
+CLASS_NAMES_4 = {
+    0: "Background",
+    1: "Built-up",
+    2: "Vegetation",
+    3: "Water"
+}
 
-    class_names = {
-        0: "Background",
-        1: "Water",
-        2: "Woodland",
-        3: "Building",
-        4: "Road"
-    }
+CLASS_NAMES_5 = {
+    0: "Background",
+    1: "Water",
+    2: "Woodland",
+    3: "Building",
+    4: "Road"
+}
 
-    # Convert PyTorch tensor to NumPy if necessary
+def get_land_cover_percentages(predicted_mask, num_classes=None):
     if isinstance(predicted_mask, torch.Tensor):
         predicted_mask = predicted_mask.cpu().numpy()
 
-    total = predicted_mask.size
+    if num_classes is None:
+        max_val = int(np.max(predicted_mask)) if predicted_mask.size > 0 else 3
+        num_classes = 5 if max_val >= 4 else 4
 
+    class_names = CLASS_NAMES_4 if num_classes == 4 else CLASS_NAMES_5
+    total = predicted_mask.size
     result = {}
 
     for c in range(num_classes):
-
         pixel_count = np.sum(predicted_mask == c)
-
         pct = (pixel_count / total) * 100
-
-        result[class_names[c]] = pct
+        result[class_names.get(c, f"Class_{c}")] = round(float(pct), 2)
 
     return result
 
@@ -153,42 +168,35 @@ def compare_years_tiled(
     image_path_year1,
     image_path_year2
 ):
-
-    mask1 = predict_tiled(
-        model,
-        device,
-        image_path_year1
-    )
-
-    mask2 = predict_tiled(
-        model,
-        device,
-        image_path_year2
-    )
+    mask1 = predict_tiled(model, device, image_path_year1)
+    mask2 = predict_tiled(model, device, image_path_year2)
 
     pct1 = get_land_cover_percentages(mask1)
     pct2 = get_land_cover_percentages(mask2)
 
     def to_veg_urban(pct):
-        return {
-            "vegetation": pct["Woodland"],
-            "urbanization": pct["Building"] + pct["Road"]
-        }
+        if "Vegetation" in pct:
+            # 4-class scheme
+            return {
+                "vegetation": pct.get("Vegetation", 0.0),
+                "urbanization": pct.get("Built-up", 0.0)
+            }
+        else:
+            # 5-class scheme
+            return {
+                "vegetation": pct.get("Woodland", 0.0),
+                "urbanization": round(pct.get("Building", 0.0) + pct.get("Road", 0.0), 2)
+            }
 
     veg_urban_1 = to_veg_urban(pct1)
     veg_urban_2 = to_veg_urban(pct2)
 
     return {
-        "year1": veg_urban_1,
-        "year2": veg_urban_2,
+        "year1": {**veg_urban_1, "details": pct1},
+        "year2": {**veg_urban_2, "details": pct2},
         "change": {
-            "vegetation":
-                veg_urban_2["vegetation"] -
-                veg_urban_1["vegetation"],
-
-            "urbanization":
-                veg_urban_2["urbanization"] -
-                veg_urban_1["urbanization"]
+            "vegetation": round(veg_urban_2["vegetation"] - veg_urban_1["vegetation"], 2),
+            "urbanization": round(veg_urban_2["urbanization"] - veg_urban_1["urbanization"], 2)
         }
     }
 
@@ -197,11 +205,4 @@ if __name__ == "__main__":
     model, device = load_model()
     predicted_mask = predict(model, device, "hyderabad_2018_rgb.png")
     percentages = get_land_cover_percentages(predicted_mask)
-    print(percentages)
-
-    visualize(Image.open("hyderabad_2018_rgb.png"), predicted_mask)
-
-    result = predict_tiled(model, device, "automatic_2018.tif")
-    percentages = get_land_cover_percentages(result)
-    print(percentages)
-    print(result)
+    print("Percentages:", percentages)
