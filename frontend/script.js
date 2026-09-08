@@ -7,7 +7,9 @@
 // ─────────────────────────────────────────
 const MIN_YEAR = 2015;
 const MAX_YEAR = Math.max(2025, new Date().getFullYear());
-const API_BASE_URL = 'https://landscope-backend.onrender.com';
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:5000'
+  : (window.location.origin.includes('onrender.com') ? window.location.origin : 'https://landscope-backend.onrender.com');
 
 // ─────────────────────────────────────────
 //  STATE
@@ -441,68 +443,163 @@ async function runCompare() {
 }
 
 // ─────────────────────────────────────────
-//  RENDER RESULTS & INTERPRETATION
+//  CLASS PALETTE — color per land-cover label
+// ─────────────────────────────────────────
+const CLASS_STYLE = {
+  'Background / Bare':  { color: '#94a3b8', grad: 'from-slate-500 to-slate-400',   icon: '🏜️' },
+  'Water':              { color: '#38bdf8', grad: 'from-sky-500 to-cyan-400',       icon: '💧' },
+  'Vegetation':         { color: '#34d399', grad: 'from-emerald-500 to-teal-400',   icon: '🌿' },
+  'Woodland':           { color: '#34d399', grad: 'from-emerald-500 to-teal-400',   icon: '🌳' },
+  'Built-up / Urban':   { color: '#fbbf24', grad: 'from-amber-500 to-orange-400',   icon: '🏗️' },
+  'Building':           { color: '#fbbf24', grad: 'from-amber-500 to-orange-400',   icon: '🏢' },
+  'Road':               { color: '#c084fc', grad: 'from-purple-500 to-violet-400',  icon: '🛣️' },
+};
+
+function getClassStyle(name) {
+  return CLASS_STYLE[name] || { color: '#e2e8f0', grad: 'from-slate-400 to-slate-300', icon: '📊' };
+}
+
+// ─────────────────────────────────────────
+//  SKELETON LOADING STATE
 // ─────────────────────────────────────────
 function setSkeletonLoading(y1, y2) {
   document.getElementById('resultEpochBadge').textContent = `${y1} → ${y2}`;
   document.getElementById('resultHeadline').textContent = 'Acquiring Sentinel-2 Multispectral Imagery...';
-  document.getElementById('resultSubheadline').textContent = 'Computing pixel-level NDVI and NDBI matrices via Earth Engine.';
+  document.getElementById('resultSubheadline').textContent = 'Computing pixel-level NDVI and UNet hybrid inference via Earth Engine.';
   document.getElementById('cardYear1Label').textContent = `Year ${y1}`;
   document.getElementById('cardYear2Label').textContent = `Year ${y2}`;
-
-  document.getElementById('y1VegVal').textContent = '...';
-  document.getElementById('y1UrbVal').textContent = '...';
-  document.getElementById('y2VegVal').textContent = '...';
-  document.getElementById('y2UrbVal').textContent = '...';
-  document.getElementById('deltaVegVal').textContent = '...';
-  document.getElementById('deltaUrbVal').textContent = '...';
+  document.getElementById('modelName').textContent = 'UNet Hybrid + NDVI/NDBI Analysis';
+  document.getElementById('modelPipeline').textContent = 'Google Earth Engine — Sentinel-2 Multispectral';
+  document.getElementById('modelClassChips').innerHTML = '';
+  document.getElementById('modelCategoryCount').textContent = '...';
+  document.getElementById('y1CategoryBars').innerHTML = '<p class="text-slate-500 text-xs animate-pulse">Loading categories...</p>';
+  document.getElementById('y2CategoryBars').innerHTML = '<p class="text-slate-500 text-xs animate-pulse">Loading categories...</p>';
+  document.getElementById('deltaTable').innerHTML = '';
+  document.getElementById('shiftVelocityBadge').textContent = 'Computing velocity...';
   document.getElementById('ecologicalInterpretation').textContent = 'Synthesizing surface reflectance indices...';
 }
 
+// ─────────────────────────────────────────
+//  BUILD CATEGORY BARS HTML
+// ─────────────────────────────────────────
+function buildCategoryBars(details) {
+  if (!details || typeof details !== 'object') return '<p class="text-slate-500 text-xs">No category data</p>';
+
+  return Object.entries(details).map(([name, pct]) => {
+    const style = getClassStyle(name);
+    const val = Number(pct).toFixed(1);
+    const barW = Math.min(100, Math.max(0, parseFloat(val)));
+    return `
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-slate-300 flex items-center gap-1.5">
+            <span>${style.icon}</span>
+            <span>${name}</span>
+          </span>
+          <span class="font-mono font-bold text-base" style="color:${style.color}">${val}%</span>
+        </div>
+        <div class="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+          <div class="meter-fill bg-gradient-to-r ${style.grad} h-full" style="width:${barW}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────
+//  BUILD DELTA TABLE
+// ─────────────────────────────────────────
+function buildDeltaTable(d1, d2) {
+  const keys = Object.keys(d1 || d2 || {});
+  if (!keys.length) return '';
+  return keys.map(name => {
+    const v1 = Number((d1 || {})[name] || 0);
+    const v2 = Number((d2 || {})[name] || 0);
+    const delta = (v2 - v1).toFixed(1);
+    const dNum = parseFloat(delta);
+    const style = getClassStyle(name);
+    const sign = dNum >= 0 ? '+' : '';
+    const textColor = dNum > 0.5 ? 'text-emerald-400' : dNum < -0.5 ? 'text-red-400' : 'text-slate-300';
+    return `
+      <div class="bg-black/30 p-3 rounded-xl border border-white/5 flex flex-col gap-1">
+        <span class="text-[10px] text-slate-400 flex items-center gap-1">${style.icon} ${name}</span>
+        <span class="font-mono text-base font-bold ${textColor}">${sign}${delta}%</span>
+      </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────
+//  MAIN RENDER FUNCTION
+// ─────────────────────────────────────────
 function renderResults(data, year1, year2) {
+  // ── Model badge ──────────────────────────
+  const model = data.model || {};
+  document.getElementById('modelName').textContent     = model.name     || 'UNet Hybrid + NDVI/NDBI Analysis';
+  document.getElementById('modelPipeline').textContent = model.pipeline || 'Google Earth Engine — Sentinel-2 Multispectral';
+  const scheme = model.class_scheme || Object.keys(data.year1?.details || {});
+  const catCount = scheme.length;
+  document.getElementById('modelCategoryCount').textContent = `${catCount}-Class Output`;
+
+  // Color chips per class
+  const chipsEl = document.getElementById('modelClassChips');
+  chipsEl.innerHTML = scheme.map(name => {
+    const s = getClassStyle(name);
+    return `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+      style="color:${s.color};border-color:${s.color}40;background:${s.color}15">${s.icon} ${name}</span>`;
+  }).join('');
+
+  // ── Epoch labels ─────────────────────────
+  document.getElementById('resultEpochBadge').textContent = `${year1} → ${year2} (${year2 - year1} Year Span)`;
+  document.getElementById('cardYear1Label').textContent = `Year ${year1}`;
+  document.getElementById('cardYear2Label').textContent = `Year ${year2}`;
+
+  // ── Category bars ────────────────────────
+  const d1 = data.year1?.details || {};
+  const d2 = data.year2?.details || {};
+
+  // Graceful fallback: if no details, synthesize from vegetation/urbanization
+  const hasDetails = Object.keys(d1).length > 0;
+  const details1 = hasDetails ? d1 : {
+    'Vegetation':       data.year1.vegetation,
+    'Built-up / Urban': data.year1.urbanization
+  };
+  const details2 = hasDetails ? d2 : {
+    'Vegetation':       data.year2.vegetation,
+    'Built-up / Urban': data.year2.urbanization
+  };
+
+  document.getElementById('y1CategoryBars').innerHTML = buildCategoryBars(details1);
+  document.getElementById('y2CategoryBars').innerHTML = buildCategoryBars(details2);
+
+  // Animate bars after insertion
+  setTimeout(() => {
+    document.querySelectorAll('#y1CategoryBars .meter-fill, #y2CategoryBars .meter-fill').forEach(el => {
+      el.style.transition = 'width 0.7s ease';
+    });
+  }, 50);
+
+  // ── Delta table ──────────────────────────
+  document.getElementById('deltaTable').innerHTML = buildDeltaTable(details1, details2);
+
+  // ── Velocity badge ───────────────────────
+  const totalChange = Object.keys(details1).reduce((sum, k) => {
+    return sum + Math.abs(Number(details2[k] || 0) - Number(details1[k] || 0));
+  }, 0);
+  const annualized = (totalChange / (year2 - year1)).toFixed(2);
+  document.getElementById('shiftVelocityBadge').innerHTML =
+    `Temporal Change Velocity: <span class="font-mono text-white font-bold">${annualized}% / year</span>`;
+
+  // ── Headline ─────────────────────────────
   const veg1 = Number(data.year1.vegetation).toFixed(1);
   const urb1 = Number(data.year1.urbanization).toFixed(1);
   const veg2 = Number(data.year2.vegetation).toFixed(1);
   const urb2 = Number(data.year2.urbanization).toFixed(1);
-  const dVeg = Number(data.change.vegetation).toFixed(1);
-  const dUrb = Number(data.change.urbanization).toFixed(1);
-
-  // Epoch Badge
-  document.getElementById('resultEpochBadge').textContent = `${year1} → ${year2} (${year2 - year1} Year Span)`;
-
-  // Values
-  document.getElementById('cardYear1Label').textContent = `Year ${year1}`;
-  document.getElementById('cardYear2Label').textContent = `Year ${year2}`;
-  document.getElementById('y1VegVal').textContent = `${veg1}%`;
-  document.getElementById('y1UrbVal').textContent = `${urb1}%`;
-  document.getElementById('y2VegVal').textContent = `${veg2}%`;
-  document.getElementById('y2UrbVal').textContent = `${urb2}%`;
-
-  // Bars width
-  setTimeout(() => {
-    document.getElementById('y1VegBar').style.width = `${Math.min(100, Math.max(0, veg1))}%`;
-    document.getElementById('y1UrbBar').style.width = `${Math.min(100, Math.max(0, urb1))}%`;
-    document.getElementById('y2VegBar').style.width = `${Math.min(100, Math.max(0, veg2))}%`;
-    document.getElementById('y2UrbBar').style.width = `${Math.min(100, Math.max(0, urb2))}%`;
-  }, 100);
-
-  // Delta Formatting
+  const dVeg = (data.year2.vegetation - data.year1.vegetation).toFixed(1);
+  const dUrb = (data.year2.urbanization - data.year1.urbanization).toFixed(1);
   const dVegNum = parseFloat(dVeg);
   const dUrbNum = parseFloat(dUrb);
 
-  const deltaVegEl = document.getElementById('deltaVegVal');
-  const deltaUrbEl = document.getElementById('deltaUrbVal');
-
-  deltaVegEl.textContent = `${dVegNum >= 0 ? '+' : ''}${dVeg}%`;
-  deltaVegEl.className = `font-mono text-base font-bold ${dVegNum >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
-
-  deltaUrbEl.textContent = `${dUrbNum >= 0 ? '+' : ''}${dUrb}%`;
-  deltaUrbEl.className = `font-mono text-base font-bold ${dUrbNum > 0 ? 'text-amber-400' : 'text-slate-300'}`;
-
-  // Headline Determination
   let headline = 'Stable Land Cover Dynamics';
   let subheadline = `Surface indices indicate minimal anthropogenic or canopy change over the ${year2 - year1}-year observation period.`;
-
   if (dUrbNum >= 3.0 && dVegNum <= -3.0) {
     headline = 'Accelerated Urban Sprawl & Canopy Depletion';
     subheadline = `Significant conversion of green biomass into impervious urban surface footprint (+${dUrb}% built-up shift).`;
@@ -516,44 +613,58 @@ function renderResults(data, year1, year2) {
     headline = 'Severe Vegetation Canopy Loss';
     subheadline = `Marked decline of -${Math.abs(dVeg)}% in NDVI density, typical of deforestation, drought, or land clearing.`;
   }
-
   document.getElementById('resultHeadline').textContent = headline;
   document.getElementById('resultSubheadline').textContent = subheadline;
 
-  // Velocity Tag
-  const velocityEl = document.getElementById('shiftVelocityBadge');
-  const totalChange = Math.abs(dVegNum) + Math.abs(dUrbNum);
-  const annualizedChange = (totalChange / (year2 - year1)).toFixed(2);
-  velocityEl.innerHTML = `Temporal Change Velocity: <span class="font-mono text-white font-bold">${annualizedChange}% / year</span>`;
-
-  // Ecological Interpretation Generator
-  generateEcologicalSummary(veg1, urb1, veg2, urb2, dVegNum, dUrbNum, year1, year2);
+  // ── Ecological narrative ─────────────────
+  generateEcologicalSummary(details1, details2, dVegNum, dUrbNum, year1, year2, model);
 }
 
-function generateEcologicalSummary(v1, u1, v2, u2, dVeg, dUrb, y1, y2) {
-  let narrative = '';
+function generateEcologicalSummary(d1, d2, dVeg, dUrb, y1, y2, model) {
+  const modelLabel = model?.name || 'UNet Hybrid Analysis';
+  const pipeline = model?.pipeline || 'Sentinel-2 via Google Earth Engine';
 
-  if (v1 < 5 && u1 < 5 && v2 < 5 && u2 < 5) {
-    narrative = `🌊 <strong>Aquatic / Low-Reflectance Area:</strong> Both NDVI and NDBI values are near zero across ${y1} and ${y2}, indicating the analyzed buffer predominantly encompasses open water bodies (lake, sea, or wide river basin) with minimal terrestrial vegetation or impervious structures.`;
-  } else {
-    narrative = `Between <strong>${y1}</strong> and <strong>${y2}</strong>, multispectral analysis across Sentinel-2 bands reveals:
-    <ul class="list-disc list-inside mt-2 space-y-1 text-slate-300">
-      <li><strong>Vegetation Canopy (NDVI):</strong> Shifted from <strong>${v1}%</strong> to <strong>${v2}%</strong> (a net change of <span class="${dVeg >= 0 ? 'text-emerald-400' : 'text-red-400'} font-semibold">${dVeg >= 0 ? '+' : ''}${dVeg}%</span>).</li>
-      <li><strong>Built-Up & Infrastructure (NDBI):</strong> Shifted from <strong>${u1}%</strong> to <strong>${u2}%</strong> (a net change of <span class="${dUrb >= 0 ? 'text-amber-400' : 'text-slate-300'} font-semibold">${dUrb >= 0 ? '+' : ''}${dUrb}%</span>).</li>
-    </ul>
-    <div class="mt-3 p-3 bg-black/40 rounded-lg border border-white/5 text-xs text-slate-300">
-      💡 <strong>Environmental Takeaway:</strong> ${
-        dUrb > 5
-          ? 'Urban expansion is the primary driver of landscape transformation in this zone. Urban heat island mitigation and green buffer preservation are recommended.'
-          : dVeg > 3
-          ? 'Positive ecological trends with enhanced photosynthetic index. Land management practices show healthy biomass retention.'
-          : 'Land cover structure remains relatively balanced with standard seasonal variation.'
-      }
+  const rows = Object.keys(d1).map(name => {
+    const v1 = Number(d1[name]).toFixed(1);
+    const v2 = Number(d2[name]).toFixed(1);
+    const delta = (Number(d2[name]) - Number(d1[name])).toFixed(1);
+    const dNum = parseFloat(delta);
+    const sign = dNum >= 0 ? '+' : '';
+    const cls = dNum >= 0 ? 'text-emerald-400' : 'text-red-400';
+    const s = getClassStyle(name);
+    return `<li>${s.icon} <strong>${name}:</strong> ${v1}% → ${v2}% (<span class="${cls} font-semibold">${sign}${delta}%</span>)</li>`;
+  }).join('');
+
+  const waterKnown = 'Water' in d1;
+  const aqCheck = !waterKnown ? '' :
+    (Number(d1['Water']) > 30 || Number(d2['Water']) > 30)
+      ? '🌊 <strong>High water body coverage</strong> detected — this zone may encompass a significant lake, river delta, or coastal area.'
+      : '';
+
+  const narrative = `
+    <div class="flex flex-col gap-3">
+      <div class="text-xs font-mono text-cyan-400/80 bg-cyan-400/5 border border-cyan-400/10 px-3 py-1.5 rounded-lg">
+        📡 Pipeline: ${modelLabel} · ${pipeline}
+      </div>
+      <p>Between <strong>${y1}</strong> and <strong>${y2}</strong>, land cover analysis reveals:</p>
+      <ul class="list-disc list-inside mt-1 space-y-1 text-slate-300">${rows}</ul>
+      ${aqCheck ? `<p class="text-sky-400 text-xs mt-1">${aqCheck}</p>` : ''}
+      <div class="mt-2 p-3 bg-black/40 rounded-lg border border-white/5 text-xs text-slate-300">
+        💡 <strong>Environmental Takeaway:</strong> ${
+          dUrb > 5
+            ? 'Urban expansion is the primary driver of landscape transformation. Heat island mitigation and green buffer preservation are recommended.'
+            : dVeg > 3
+            ? 'Positive ecological trajectory — photosynthetic cover has expanded. Land management practices show healthy biomass retention.'
+            : 'Land cover structure remains relatively balanced with standard seasonal variation.'
+        }
+      </div>
     </div>`;
-  }
-
   document.getElementById('ecologicalInterpretation').innerHTML = narrative;
 }
+
+
+
+
 
 // ─────────────────────────────────────────
 //  COPY SUMMARY REPORT
@@ -561,15 +672,31 @@ function generateEcologicalSummary(v1, u1, v2, u2, dVeg, dUrb, y1, y2) {
 function copyReportSummary() {
   if (!currentResults) return;
   const { data, year1, year2, location, radius } = currentResults;
+  const model = data.model || {};
+  const d1 = (data.year1 && data.year1.details) ? data.year1.details : { 'Vegetation': data.year1.vegetation, 'Built-up / Urban': data.year1.urbanization };
+  const d2 = (data.year2 && data.year2.details) ? data.year2.details : { 'Vegetation': data.year2.vegetation, 'Built-up / Urban': data.year2.urbanization };
 
-  const text = `🛰️ LandScope Satellite Analysis Report
+  const catLines1 = Object.entries(d1).map(([k, v]) => `  ${k}: ${Number(v).toFixed(1)}%`).join('\n');
+  const catLines2 = Object.entries(d2).map(([k, v]) => `  ${k}: ${Number(v).toFixed(1)}%`).join('\n');
+  const deltaLines = Object.keys(d1).map(k => {
+    const delta = (Number(d2[k] || 0) - Number(d1[k] || 0)).toFixed(1);
+    return `  ${k}: ${parseFloat(delta) > 0 ? '+' : ''}${delta}%`;
+  }).join('\n');
+
+  const text = `\u{1F6F0}\uFE0F LandScope Satellite Analysis Report
 Location: ${location} (${selectedLat.toFixed(5)}, ${selectedLon.toFixed(5)})
-Radius: ${radius}m (~${(Math.PI * Math.pow(radius / 1000, 2)).toFixed(1)} km²)
-Epoch Range: ${year1} → ${year2}
+Radius: ${radius}m (~${(Math.PI * Math.pow(radius / 1000, 2)).toFixed(1)} km\u00B2)
+Epoch Range: ${year1} \u2192 ${year2}
+Pipeline: ${model.name || 'UNet Hybrid + NDVI/NDBI'} | ${model.pipeline || 'Sentinel-2 via GEE'}
 
-• ${year1} Baseline: Vegetation ${data.year1.vegetation}% | Urban ${data.year1.urbanization}%
-• ${year2} Target:   Vegetation ${data.year2.vegetation}% | Urban ${data.year2.urbanization}%
-• Net Shift:        Vegetation ${data.change.vegetation > 0 ? '+' : ''}${data.change.vegetation}% | Urbanization ${data.change.urbanization > 0 ? '+' : ''}${data.change.urbanization}%
+${year1} Baseline:
+${catLines1}
+
+${year2} Target:
+${catLines2}
+
+Net \u0394 Shift:
+${deltaLines}
 
 Source: ESA Sentinel-2 MSI via Google Earth Engine`;
 
@@ -577,6 +704,7 @@ Source: ESA Sentinel-2 MSI via Google Earth Engine`;
     alert('Analysis report copied to clipboard!');
   });
 }
+
 
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
