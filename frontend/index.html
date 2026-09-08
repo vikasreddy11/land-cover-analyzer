@@ -3,13 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LandScope — Land Cover Intelligence</title>
-  <meta name="description" content="Analyze and compare land cover changes over time using satellite imagery and AI-powered Land Cover Model classification." />
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <title>LandScope — Satellite Land Cover Intelligence</title>
+  <meta name="description" content="High-precision satellite land cover analysis tool powered by Sentinel-2 multispectral imagery and Google Earth Engine." />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -17,238 +12,551 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-  <!-- Custom CSS (animations, glassmorphism, leaflet overrides) -->
+  <!-- Custom Design System -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Tailwind Config -->
+  <!-- Tailwind Custom Colors -->
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            sans:   ['Inter', 'sans-serif'],
-            grotesk:['Space Grotesk', 'sans-serif'],
-          },
           colors: {
-            base:    { DEFAULT: '#0a0f1e', card: '#111827', surface: '#0d1528' },
-            accent:  { green: '#10d97e', blue: '#3b82f6', purple: '#8b5cf6', orange: '#f59e0b', red: '#ef4444' },
-          },
-          boxShadow: {
-            glow:    '0 0 30px rgba(16,217,126,0.25)',
-            'glow-blue': '0 0 30px rgba(59,130,246,0.25)',
-            card:    '0 4px 24px rgba(0,0,0,0.4)',
-            deep:    '0 8px 48px rgba(0,0,0,0.6)',
-          },
+            brand: {
+              dark: '#070b14',
+              surface: '#0d1424',
+              card: '#111a2e',
+              border: 'rgba(255, 255, 255, 0.08)',
+              emerald: '#10d97e',
+              amber: '#f59e0b',
+              cyan: '#38bdf8',
+            }
+          }
         }
       }
     }
   </script>
 </head>
 
-<body class="bg-base font-sans text-slate-100 min-h-screen overflow-x-hidden">
-
+<body class="bg-[#070b14] text-slate-100 min-h-screen">
   <!-- Ambient background glow -->
-  <div class="ambient-bg" aria-hidden="true"></div>
+  <div class="ambient-glow" aria-hidden="true"></div>
 
-  <div class="relative z-10 max-w-6xl mx-auto px-6 pb-20">
+  <!-- Primary App Shell -->
+  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
 
     <!-- ═══════════════════════════════════════
-         HEADER
+         HEADER & NAV
     ═══════════════════════════════════════ -->
-    <header class="flex items-center justify-between py-6 border-b border-white/[0.08] mb-10">
-      <a href="#" class="flex items-center gap-3 no-underline">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-green to-accent-blue flex items-center justify-center text-xl shadow-glow">
+    <header class="glass-panel px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xl shadow-[0_0_20px_rgba(16,217,126,0.35)]">
           🛰️
         </div>
-        <span class="font-grotesk text-xl font-bold tracking-tight">
-          Land<span class="text-accent-green">Scope</span>
-        </span>
-      </a>
-      <span class="text-[11px] font-semibold uppercase tracking-widest text-accent-green bg-accent-green/10 border border-accent-green/25 px-3 py-1 rounded-full">
-        AI Powered
-      </span>
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="font-grotesk text-xl font-bold tracking-tight text-white">
+              Land<span class="text-emerald-400">Scope</span>
+            </span>
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-400/10 border border-emerald-400/25 px-2.5 py-0.5 rounded-full">
+              Sentinel-2 Analytics
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Google Earth Engine Multispectral Land Cover Intelligence</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Live Engine Status Badge -->
+        <div class="flex items-center gap-2 text-xs font-mono text-slate-400 bg-black/40 border border-white/10 px-3.5 py-1.5 rounded-lg">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+          <span>Sentinel-2 TOA Engine Ready</span>
+        </div>
+
+        <!-- Documentation / Science Info Modal Trigger -->
+        <button
+          onclick="toggleScienceModal(true)"
+          class="glass-pill text-xs font-medium text-slate-300 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+        >
+          <span>ℹ️</span> Science Guide
+        </button>
+      </div>
     </header>
 
     <!-- ═══════════════════════════════════════
-         HERO
+         QUICK PRESETS BAR
     ═══════════════════════════════════════ -->
-    <section class="text-center mb-12">
-      <div class="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-accent-green bg-accent-green/8 border border-accent-green/20 px-4 py-1.5 rounded-full mb-5">
-        🌍 Satellite Intelligence
-      </div>
-      <h1 class="font-grotesk text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-4">
-        Analyze <span class="gradient-text">Land Cover Changes</span><br />Over Time
-      </h1>
-      <p class="text-slate-400 text-base max-w-lg mx-auto leading-relaxed">
-        Search any place on Earth, pick two years, and let our Land Cover Model compare
-        vegetation and urbanization using satellite imagery.
-      </p>
-    </section>
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
+      <span class="text-slate-400 font-medium whitespace-nowrap flex items-center gap-1">
+        <span>⚡ Quick Presets:</span>
+      </span>
+      <button onclick="loadPreset(25.1972, 55.2744, 'Dubai Urbanization (UAE)', 3000, 2016, 2024)" class="glass-pill text-slate-300 hover:text-emerald-400 px-3 py-1 rounded-full whitespace-nowrap">
+        🏙️ Dubai Expansion
+      </button>
+      <button onclick="loadPreset(-9.9749, -63.0407, 'Amazon Rainforest (Rondônia, Brazil)', 4000, 2016, 2023)" class="glass-pill text-slate-300 hover:text-emerald-400 px-3 py-1 rounded-full whitespace-nowrap">
+        🌳 Amazon Forest Loss
+      </button>
+      <button onclick="loadPreset(17.4435, 78.3772, 'Hyderabad HITEC City (India)', 2500, 2017, 2024)" class="glass-pill text-slate-300 hover:text-emerald-400 px-3 py-1 rounded-full whitespace-nowrap">
+        🏢 Hyderabad Tech Hub
+      </button>
+      <button onclick="loadPreset(36.1408, -114.7352, 'Lake Mead (Nevada, USA)', 4000, 2016, 2023)" class="glass-pill text-slate-300 hover:text-emerald-400 px-3 py-1 rounded-full whitespace-nowrap">
+        🌊 Lake Mead Reservoir
+      </button>
+      <button onclick="loadPreset(1.3521, 103.8198, 'Singapore Green Plan', 3000, 2016, 2024)" class="glass-pill text-slate-300 hover:text-emerald-400 px-3 py-1 rounded-full whitespace-nowrap">
+        🌿 Singapore Canopy
+      </button>
+    </div>
 
     <!-- ═══════════════════════════════════════
-         STEP 1 — SELECT LOCATION
+         TWO-COLUMN COMMAND DECK
     ═══════════════════════════════════════ -->
-    <div class="glass-panel mb-6">
-      <p class="step-label">Step 1 — Select Location</p>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-      <!-- Search bar -->
-      <div class="relative" id="searchWrapper">
-        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none text-lg">🔍</span>
+      <!-- LEFT COLUMN: CONTROLS & PARAMS (5 Cols) -->
+      <div class="lg:col-span-5 flex flex-col gap-5">
 
-        <input
-          type="text"
-          id="placeInput"
-          class="w-full pl-12 pr-28 py-3.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 text-sm placeholder-slate-500 outline-none transition-all duration-200 focus:border-accent-green focus:bg-accent-green/5 focus:ring-2 focus:ring-accent-green/10"
-          placeholder="Search a city, region or landmark…"
-          autocomplete="off"
-          aria-label="Place search"
-          oninput="onSearchInput()"
-          onkeydown="onSearchKey(event)"
-        />
+        <!-- Panel 1: Location & Coordinates -->
+        <div class="glass-panel p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 1. Target Location
+            </span>
+            <span class="text-[11px] text-slate-400">Click map or search</span>
+          </div>
 
+          <!-- Search Input with Autocomplete -->
+          <div class="relative" id="searchWrapper">
+            <div class="relative flex items-center">
+              <span class="absolute left-3.5 text-slate-400 text-sm">🔍</span>
+              <input
+                type="text"
+                id="placeInput"
+                class="w-full pl-10 pr-24 py-2.5 bg-black/40 border border-white/10 rounded-xl text-slate-100 text-sm placeholder-slate-400 outline-none transition-all focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                placeholder="Search city, coordinates, or landmark..."
+                autocomplete="off"
+                oninput="onSearchInput()"
+                onkeydown="onSearchKey(event)"
+              />
+              <button
+                id="searchBtn"
+                onclick="searchPlace()"
+                class="absolute right-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-[#070b14] text-xs font-semibold rounded-lg transition-all"
+              >
+                Locate
+              </button>
+            </div>
+
+            <!-- Autocomplete Dropdown List -->
+            <div
+              id="autocompleteDropdown"
+              class="autocomplete-dropdown absolute top-[calc(100%+6px)] left-0 right-0 hidden"
+            ></div>
+          </div>
+
+          <!-- Coordinate Chips -->
+          <div class="grid grid-cols-2 gap-2.5 font-mono text-xs">
+            <div class="bg-black/30 border border-white/10 rounded-lg p-2.5 flex flex-col gap-0.5">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider font-sans">Latitude</span>
+              <span id="latDisplay" class="text-emerald-400 font-semibold truncate">—</span>
+            </div>
+            <div class="bg-black/30 border border-white/10 rounded-lg p-2.5 flex flex-col gap-0.5">
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider font-sans">Longitude</span>
+              <span id="lonDisplay" class="text-emerald-400 font-semibold truncate">—</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-slate-400 px-1">
+            <span id="placeDisplay" class="truncate max-w-[240px]">No point selected yet</span>
+            <button onclick="copyCoordinates()" class="text-slate-400 hover:text-slate-200 text-[11px] underline">
+              Copy Lat/Lon
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel 2: Analysis Radius & Scope -->
+        <div class="glass-panel p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span> 2. Analysis Footprint
+            </span>
+            <span id="areaDisplay" class="text-xs font-mono font-medium text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 px-2 py-0.5 rounded">
+              Area: ~12.6 km²
+            </span>
+          </div>
+
+          <!-- Radius Slider & Numeric Input -->
+          <div class="flex flex-col gap-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-300">Buffer Radius:</span>
+              <div class="flex items-center gap-1 font-mono">
+                <input
+                  type="number"
+                  id="radiusInput"
+                  value="2000"
+                  min="500"
+                  max="10000"
+                  step="250"
+                  class="w-20 px-2 py-1 bg-black/40 border border-white/10 rounded text-right text-emerald-400 text-xs font-bold outline-none focus:border-emerald-400"
+                  onchange="syncRadiusFromNumber(this.value)"
+                />
+                <span class="text-slate-400">meters</span>
+              </div>
+            </div>
+
+            <input
+              type="range"
+              id="radiusRange"
+              min="500"
+              max="10000"
+              step="250"
+              value="2000"
+              class="w-full"
+              oninput="syncRadiusFromSlider(this.value)"
+            />
+
+            <!-- Radius Presets -->
+            <div class="grid grid-cols-4 gap-2 pt-1">
+              <button onclick="setRadius(1000)" class="radius-pill text-xs py-1 px-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300">1 km</button>
+              <button onclick="setRadius(2000)" class="radius-pill active text-xs py-1 px-2 rounded-md bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 font-semibold">2 km</button>
+              <button onclick="setRadius(4000)" class="radius-pill text-xs py-1 px-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300">4 km</button>
+              <button onclick="setRadius(8000)" class="radius-pill text-xs py-1 px-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300">8 km</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 3: Temporal Epochs (Observation Years) -->
+        <div class="glass-panel p-5 flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span> 3. Temporal Comparison
+            </span>
+            <span class="text-[11px] font-mono text-slate-400">Sentinel-2 (2015 – 2026)</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Year 1 -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[11px] font-medium text-slate-300" for="year1">
+                Baseline Epoch (<span class="text-emerald-400">Year 1</span>)
+              </label>
+              <select
+                id="year1"
+                class="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 font-mono outline-none focus:border-emerald-400"
+                onchange="validateYears()"
+              >
+                <!-- Generated dynamically in JS -->
+              </select>
+            </div>
+
+            <!-- Year 2 -->
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[11px] font-medium text-slate-300" for="year2">
+                Target Epoch (<span class="text-amber-400">Year 2</span>)
+              </label>
+              <select
+                id="year2"
+                class="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-100 font-mono outline-none focus:border-amber-400"
+                onchange="validateYears()"
+              >
+                <!-- Generated dynamically in JS -->
+              </select>
+            </div>
+          </div>
+          <p id="yearErrorHint" class="text-xs text-red-400 hidden"></p>
+        </div>
+
+        <!-- Action Button -->
         <button
-          id="searchBtn"
-          onclick="searchPlace()"
-          class="absolute right-1.5 top-1/2 -translate-y-1/2 px-5 py-2 bg-gradient-to-r from-accent-green to-emerald-500 text-white text-sm font-semibold rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-glow active:scale-95"
+          id="compareBtn"
+          onclick="runCompare()"
+          class="relative w-full py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-[#070b14] font-grotesk text-base font-bold rounded-xl shadow-[0_0_30px_rgba(16,217,126,0.3)] hover:shadow-[0_0_40px_rgba(16,217,126,0.5)] transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 cursor-pointer"
         >
-          Search
+          <span id="btnSpinner" class="w-5 h-5 border-2 border-[#070b14]/40 border-t-[#070b14] rounded-full animate-spin-fast hidden"></span>
+          <span id="btnText" class="flex items-center gap-2">
+            🔬 Run Multi-Spectral Analysis
+          </span>
         </button>
 
-        <!-- Autocomplete dropdown -->
-        <div
-          id="autocompleteDropdown"
-          class="autocomplete-dropdown absolute top-[calc(100%+6px)] left-0 right-0 bg-[#1a2235] border border-white/[0.12] rounded-xl overflow-hidden z-50 shadow-deep hidden"
-        ></div>
       </div>
 
-      <!-- Coordinates display -->
-      <div class="flex flex-wrap gap-3 mt-4">
-        <div id="latBadge" class="coord-badge flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2 text-sm">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Lat</span>
-          <span id="latDisplay" class="font-grotesk font-semibold text-accent-green">—</span>
+      <!-- RIGHT COLUMN: INTERACTIVE MAP CANVAS (7 Cols) -->
+      <div class="lg:col-span-7 flex flex-col gap-4">
+        <div class="relative glass-panel overflow-hidden border border-white/10 p-2 rounded-2xl shadow-2xl">
+
+          <!-- Map Header / Toolbar -->
+          <div class="absolute top-4 left-4 right-4 z-[400] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <!-- Basemap Layer Switcher -->
+            <div class="flex items-center gap-1 pointer-events-auto bg-[#070b14]/80 p-1 rounded-xl border border-white/10 backdrop-blur-md">
+              <button id="btnSatLayer" onclick="switchBasemap('satellite')" class="map-layer-btn active">
+                🛰️ Satellite
+              </button>
+              <button id="btnDarkLayer" onclick="switchBasemap('dark')" class="map-layer-btn">
+                🌑 Dark Matter
+              </button>
+              <button id="btnStreetLayer" onclick="switchBasemap('street')" class="map-layer-btn">
+                🗺️ Standard
+              </button>
+            </div>
+
+            <!-- Quick Action Tools -->
+            <div class="flex items-center gap-1.5 pointer-events-auto">
+              <button onclick="locateUserPosition()" title="Locate My Position" class="map-layer-btn">
+                📍 My Location
+              </button>
+              <button onclick="resetMapTarget()" title="Center on Selected Location" class="map-layer-btn">
+                🎯 Recenter
+              </button>
+            </div>
+          </div>
+
+          <!-- Leaflet Map Canvas -->
+          <div id="map" class="h-[560px] w-full rounded-xl"></div>
+
+          <!-- Bottom HUD Overlay -->
+          <div class="absolute bottom-4 left-4 z-[400] bg-[#070b14]/85 border border-white/10 rounded-xl px-3.5 py-2 text-xs backdrop-blur-md flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+              <span id="mapStatusText" class="text-slate-300 font-medium">Ready — Pinpoint any region to inspect</span>
+            </div>
+            <div class="h-3 w-px bg-white/20"></div>
+            <span id="cursorCoords" class="font-mono text-slate-400 text-[11px]">Hover over map</span>
+          </div>
+
         </div>
-        <div id="lonBadge" class="coord-badge flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2 text-sm">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Lon</span>
-          <span id="lonDisplay" class="font-grotesk font-semibold text-accent-green">—</span>
+
+        <!-- Scientific Index Footnote Banner -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-black/30 border border-white/5 rounded-xl p-3 flex items-start gap-2.5">
+            <span class="text-emerald-400 text-sm font-bold">🌿</span>
+            <div>
+              <span class="font-bold text-slate-200">NDVI (Vegetation Index)</span>
+              <p class="text-slate-400 text-[11px] mt-0.5 font-mono">(B8 - B4) / (B8 + B4) &gt; 0.3</p>
+            </div>
+          </div>
+
+          <div class="bg-black/30 border border-white/5 rounded-xl p-3 flex items-start gap-2.5">
+            <span class="text-amber-400 text-sm font-bold">🏗️</span>
+            <div>
+              <span class="font-bold text-slate-200">NDBI (Built-up Index)</span>
+              <p class="text-slate-400 text-[11px] mt-0.5 font-mono">(B11 - B8) / (B11 + B8) &gt; 0.1</p>
+            </div>
+          </div>
         </div>
-        <div id="placeBadge" class="coord-badge flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2 text-sm">
-          <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Place</span>
-          <span id="placeDisplay" class="font-grotesk font-semibold text-accent-green">—</span>
-        </div>
+
       </div>
 
-      <p class="text-slate-500 text-sm mt-4 flex items-center gap-2">
-        📍 You can also click directly on the map to pin a location
-      </p>
     </div>
 
     <!-- ═══════════════════════════════════════
-         MAP
+         RESULTS & INTELLIGENCE SECTION
     ═══════════════════════════════════════ -->
-    <div class="relative rounded-2xl overflow-hidden border border-white/[0.08] shadow-deep mb-6">
-      <div id="map" class="h-[480px] w-full"></div>
-      <div id="mapOverlay" class="absolute bottom-4 left-4 z-[400] bg-base/85 border border-white/[0.08] rounded-xl px-4 py-2.5 text-xs text-slate-400 backdrop-blur-md">
-        <span class="map-pulse inline-block w-2 h-2 rounded-full bg-accent-green mr-2"></span>
-        Click on map or search a place to select location
-      </div>
-    </div>
+    <div id="resultsSection" class="hidden transition-all duration-500 flex flex-col gap-5 pt-4">
 
-    <!-- ═══════════════════════════════════════
-         STEP 2 — PARAMETERS
-    ═══════════════════════════════════════ -->
-    <div class="glass-panel mb-6">
-      <p class="step-label">Step 2 — Configure Parameters</p>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-        <div class="flex flex-col gap-2">
-          <label class="text-[11px] font-bold uppercase tracking-widest text-slate-500" for="radius">
-            Radius <span class="text-accent-green">(meters)</span>
-          </label>
-          <input
-            type="number"
-            id="radius"
-            value="2000"
-            min="500"
-            max="20000"
-            placeholder="2000"
-            class="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 text-sm outline-none transition-all duration-200 focus:border-accent-blue focus:bg-accent-blue/5 focus:ring-2 focus:ring-accent-blue/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-          />
-        </div>
-
-        <div class="flex flex-col gap-2">
-          <label class="text-[11px] font-bold uppercase tracking-widest text-slate-500" for="year1">
-            Year 1 <span class="text-accent-green">(baseline)</span>
-          </label>
-          <input
-            type="number"
-            id="year1"
-            value="2019"
-            min="2015"
-            max="2024"
-            placeholder="2019"
-            class="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 text-sm outline-none transition-all duration-200 focus:border-accent-blue focus:bg-accent-blue/5 focus:ring-2 focus:ring-accent-blue/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <p id="year1Hint" class="year-hint text-[11px] text-slate-500 flex items-center gap-1.5">
-            <span class="text-accent-green opacity-70">🛰️</span>
-            Sentinel-2 available: <span class="year-range-label font-semibold text-slate-400">2015 – <span id="maxYearLabel1"></span></span>
+      <!-- Executive Headline Banner -->
+      <div id="executiveBanner" class="glass-panel p-6 border-l-4 border-l-emerald-400 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xs uppercase font-bold tracking-widest text-emerald-400">Analysis Complete</span>
+            <span id="resultEpochBadge" class="text-xs font-mono bg-white/10 px-2.5 py-0.5 rounded-full text-slate-300"></span>
+          </div>
+          <h2 id="resultHeadline" class="font-grotesk text-xl md:text-2xl font-bold text-white tracking-tight">
+            Temporal Land Cover Shift Detected
+          </h2>
+          <p id="resultSubheadline" class="text-sm text-slate-300">
+            Sentinel-2 surface reflectance comparison over the selected area.
           </p>
         </div>
 
-        <div class="flex flex-col gap-2">
-          <label class="text-[11px] font-bold uppercase tracking-widest text-slate-500" for="year2">
-            Year 2 <span class="text-accent-green">(target)</span>
-          </label>
-          <input
-            type="number"
-            id="year2"
-            value="2022"
-            min="2015"
-            max="2024"
-            placeholder="2022"
-            class="px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-slate-100 text-sm outline-none transition-all duration-200 focus:border-accent-blue focus:bg-accent-blue/5 focus:ring-2 focus:ring-accent-blue/10 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-          />
-          <p id="year2Hint" class="year-hint text-[11px] text-slate-500 flex items-center gap-1.5">
-            <span class="text-accent-green opacity-70">🛰️</span>
-            Sentinel-2 available: <span class="year-range-label font-semibold text-slate-400">2015 – <span id="maxYearLabel2"></span></span>
-          </p>
+        <div class="flex items-center gap-2">
+          <button onclick="copyReportSummary()" class="glass-pill px-4 py-2 text-xs font-semibold text-slate-200 hover:text-white rounded-lg flex items-center gap-1.5">
+            📋 Copy Report
+          </button>
+          <button onclick="scrollToTop()" class="glass-pill px-4 py-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 rounded-lg flex items-center gap-1.5">
+            🔍 New Area
+          </button>
         </div>
       </div>
 
-      <!-- Info chips -->
-      <div class="flex flex-wrap gap-3 mt-5">
-        <span class="flex items-center gap-1.5 text-xs text-slate-500 bg-white/[0.03] border border-white/[0.07] px-3 py-1.5 rounded-full">🛰️ Sentinel-2 Imagery</span>
-        <span class="flex items-center gap-1.5 text-xs text-slate-500 bg-white/[0.03] border border-white/[0.07] px-3 py-1.5 rounded-full">🧠 Land Cover Model</span>
-        <span class="flex items-center gap-1.5 text-xs text-slate-500 bg-white/[0.03] border border-white/[0.07] px-3 py-1.5 rounded-full">🌿 Woodland · 🏗️ Urban</span>
+      <!-- 3 Core Metric Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+        <!-- Card 1: Year 1 Baseline -->
+        <div class="glass-panel p-6 flex flex-col gap-4 border-t-2 border-t-emerald-400">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Baseline Epoch</span>
+            <span id="cardYear1Label" class="font-mono text-sm font-bold text-emerald-400">Year 2018</span>
+          </div>
+
+          <!-- Vegetation -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-300 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Vegetation (NDVI)
+              </span>
+              <span id="y1VegVal" class="font-mono font-bold text-emerald-400 text-base">0.0%</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+              <div id="y1VegBar" class="meter-fill bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-0"></div>
+            </div>
+          </div>
+
+          <!-- Urbanization -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-300 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Built-up / Urban (NDBI)
+              </span>
+              <span id="y1UrbVal" class="font-mono font-bold text-amber-400 text-base">0.0%</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+              <div id="y1UrbBar" class="meter-fill bg-gradient-to-r from-amber-500 to-red-400 h-full w-0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Year 2 Target -->
+        <div class="glass-panel p-6 flex flex-col gap-4 border-t-2 border-t-amber-400">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Epoch</span>
+            <span id="cardYear2Label" class="font-mono text-sm font-bold text-amber-400">Year 2024</span>
+          </div>
+
+          <!-- Vegetation -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-300 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Vegetation (NDVI)
+              </span>
+              <span id="y2VegVal" class="font-mono font-bold text-emerald-400 text-base">0.0%</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+              <div id="y2VegBar" class="meter-fill bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-0"></div>
+            </div>
+          </div>
+
+          <!-- Urbanization -->
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-300 flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Built-up / Urban (NDBI)
+              </span>
+              <span id="y2UrbVal" class="font-mono font-bold text-amber-400 text-base">0.0%</span>
+            </div>
+            <div class="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+              <div id="y2UrbBar" class="meter-fill bg-gradient-to-r from-amber-500 to-red-400 h-full w-0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Net Delta & Trajectory -->
+        <div class="glass-panel p-6 flex flex-col justify-between gap-4 border-t-2 border-t-cyan-400">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Net Dynamics</span>
+            <span class="font-mono text-xs text-cyan-400">Δ Shift</span>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/5">
+              <span class="text-xs text-slate-300">Vegetation Δ:</span>
+              <span id="deltaVegVal" class="font-mono text-base font-bold text-emerald-400">—</span>
+            </div>
+
+            <div class="flex items-center justify-between bg-black/30 p-3 rounded-xl border border-white/5">
+              <span class="text-xs text-slate-300">Urbanization Δ:</span>
+              <span id="deltaUrbVal" class="font-mono text-base font-bold text-amber-400">—</span>
+            </div>
+          </div>
+
+          <div id="shiftVelocityBadge" class="text-[11px] text-slate-400 text-center py-1">
+            Analyzing temporal velocity...
+          </div>
+        </div>
+
       </div>
+
+      <!-- Ecological & Urban AI Summary -->
+      <div class="glass-panel p-6 flex flex-col gap-3">
+        <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
+          <span>🧠 Earth Observation Summary & Interpretation</span>
+        </div>
+        <p id="ecologicalInterpretation" class="text-sm text-slate-300 leading-relaxed">
+          Loading interpretation...
+        </p>
+      </div>
+
     </div>
 
     <!-- ═══════════════════════════════════════
-         COMPARE BUTTON
+         ERROR NOTICE CONTAINER
     ═══════════════════════════════════════ -->
-    <button
-      id="compareBtn"
-      onclick="runCompare()"
-      class="relative w-full py-4 mb-6 bg-gradient-to-r from-accent-blue to-accent-purple text-white font-grotesk text-base font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(59,130,246,0.4)] active:translate-y-0 flex items-center justify-center gap-3"
-    >
-      <span class="btn-spinner absolute w-5 h-5 border-2 border-white/30 border-t-white rounded-full hidden"></span>
-      <span id="btnText">🔬 Run Comparison Analysis</span>
-      <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-    </button>
-
-    <!-- ═══════════════════════════════════════
-         RESULTS PANEL
-    ═══════════════════════════════════════ -->
-    <div id="resultContainer" class="glass-panel results-panel opacity-0 translate-y-5 transition-all duration-500 pointer-events-none">
-      <p class="step-label">Step 3 — Results</p>
-      <div id="result"></div>
+    <div id="errorContainer" class="hidden glass-panel p-5 border-l-4 border-l-red-500 bg-red-500/10">
+      <div class="flex items-start gap-3">
+        <span class="text-xl">⚠️</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-sm font-bold text-red-300" id="errorTitle">Analysis Error</span>
+          <p class="text-xs text-red-200" id="errorMessage"></p>
+        </div>
+      </div>
     </div>
 
   </div><!-- /wrapper -->
 
+  <!-- ═══════════════════════════════════════
+       SCIENCE & INDICES MODAL
+  ═══════════════════════════════════════ -->
+  <div id="scienceModal" class="fixed inset-0 z-50 modal-backdrop hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-2xl w-full p-6 sm:p-8 flex flex-col gap-5 border border-white/20 shadow-2xl relative">
+      <button onclick="toggleScienceModal(false)" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">
+        ✕
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-xl">
+          📡
+        </div>
+        <div>
+          <h3 class="font-grotesk text-xl font-bold text-white">How LandScope Works</h3>
+          <p class="text-xs text-slate-400">Multispectral Band Mathematics & Sentinel-2 Pipeline</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-4 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col gap-2">
+          <span class="font-bold text-emerald-400 text-sm">1. NDVI (Normalized Difference Vegetation Index)</span>
+          <p>
+            Measures live green vegetation canopy. Healthy chlorophyll strongly absorbs visible Red light (<span class="font-mono text-emerald-300">Band 4, 665nm</span>) and reflects Near-Infrared (<span class="font-mono text-emerald-300">Band 8, 842nm</span>).
+          </p>
+          <div class="font-mono text-xs bg-black/60 p-2 rounded text-emerald-300">
+            NDVI = (NIR - RED) / (NIR + RED) &nbsp;[Threshold &gt; 0.3]
+          </div>
+        </div>
+
+        <div class="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col gap-2">
+          <span class="font-bold text-amber-400 text-sm">2. NDBI (Normalized Difference Built-Up Index)</span>
+          <p>
+            Highlights impervious built structures, asphalt, concrete, and urban development. Concrete reflects Short-Wave Infrared (<span class="font-mono text-amber-300">Band 11, 1610nm</span>) more intensely than NIR.
+          </p>
+          <div class="font-mono text-xs bg-black/60 p-2 rounded text-amber-300">
+            NDBI = (SWIR - NIR) / (SWIR + NIR) &nbsp;[Threshold &gt; 0.1]
+          </div>
+        </div>
+
+        <div class="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col gap-1.5">
+          <span class="font-bold text-cyan-400">3. Data Source: ESA Sentinel-2 MSI</span>
+          <p>
+            High-resolution (10m - 20m) Top-of-Atmosphere / Surface Reflectance imagery queried directly through the Google Earth Engine Cloud API, available from 2015 to present.
+          </p>
+        </div>
+      </div>
+
+      <button onclick="toggleScienceModal(false)" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-[#070b14] font-bold text-xs rounded-xl transition-all">
+        Got it, Return to Dashboard
+      </button>
+    </div>
+  </div>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- App logic -->
+  <!-- App Logic -->
   <script src="script.js"></script>
 </body>
 </html>

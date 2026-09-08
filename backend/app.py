@@ -5,7 +5,7 @@ import os
 from Earth_engine import init_earth_engine
 
 app = Flask(__name__)
-CORS(app, origins=["https://landcover.netlify.app"])
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 init_earth_engine()
 
 @app.route("/api/compare")
